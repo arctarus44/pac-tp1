@@ -29,9 +29,8 @@ if __name__ == '__main__':
 
 	res = c.server_query(c.BASE_URL + service, ticket)
 	response = c.enc(res, passphrase=clt_srv_key, decrypt=True)
+	response = eval(response)
 
-	response = response[188:len(response)-155];
-	print("|" + response +"|", end='');
-
-	proof = {'proof' : response}
-	res = c.server_query(c.BASE_URL + '/kerberos/mission-accomplished', proof)
+	param = {'proof' : response['proof']}
+	res = c.server_query(c.BASE_URL + '/kerberos/mission-accomplished', param)
+	print(res['status'])
