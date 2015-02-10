@@ -13,6 +13,14 @@ unc_msg = "Hi, how are you?"
 tmp = "tmp"
 out = "out"
 
+pk_validate = "/public-key-101/validate"
+hybrid = "/public-key-101/hybrid/" + name
+sessionKey_f = "session.key"
+cipher64_f = "cipher.64"
+cipherBin_f = "cipher.bin"
+plainttext_f = "msg.txt"
+new_pass = "0x15c4bc87ac942353f6973816945515e9"
+
 if __name__ == '__main__':
 
 	#############
@@ -36,7 +44,7 @@ if __name__ == '__main__':
 	print(resp['my-status'])
 	print(resp['status'])
 
-	os.system("rm " + pkey_srv_f + " " + enc_msg_f)
+	os.system("rm " + enc_msg_f)
 
 	#############
 	# Section 2 #
@@ -67,4 +75,54 @@ if __name__ == '__main__':
 
 	print(resp['comment'])
 	print(resp['status'])
-	os.system("rm " + my_skey_f + " " + my_pkey_f + " " + tmp + " " + out)
+	del(param)
+	os.system("rm " + tmp + " " + out)
+
+	#############
+	# Section 3 #
+	#############
+	print("*** Section 3 ***")
+	file = open(my_pkey_f, 'r')
+	param = {'public-key' : file.read()}
+	file.close()
+	resp = c.server_query(c.BASE_URL + hybrid, param)
+	session_key = resp['session-key']
+	cipher_64 = resp['ciphertext']
+
+	file = open(tmp, 'w')
+	file.write(session_key);
+	file.close()
+
+	# Je récupère la clé de session (symétrique)
+	os.system('base64 -d ' + tmp + " > " + out)
+	os.system("openssl rsautl -decrypt -in " + out + " -out " + sessionKey_f + " -inkey " + my_skey_f)
+
+	file = open(sessionKey_f, 'r')
+	passwd = file.read()
+	file.close()
+
+	decrypt_msg = c.enc(cipher_64, passphrase=passwd, base64=True, decrypt=True)
+
+	#############################
+	# Préparation de la réponse #
+	#############################
+	msg = decrypt_msg[30:93]
+	url = decrypt_msg[106:130]
+
+	#chiffremet du message à envoyer avec une clé secrete
+	msg_to_send = c.enc(msg, passphrase=new_pass)
+
+	#écriture de la clé secrete dans un fichier
+	file = open(sessionKey_f, 'w')
+	file.write(new_pass)
+	file.close()
+
+	# chiffrement
+	os.system("openssl rsautl -encrypt -pubin -inkey " + pkey_srv_f  + " -in " + sessionKey_f + " -out " + tmp)
+	os.system("base64 " + tmp + " > " + out)
+	file = open(out, 'r')
+	param = {'session-key' : file.read() , 'ciphertext' : msg_to_send[:-1]}
+	file.close()
+
+	resp = c.server_query(c.BASE_URL + pk_validate, param)
+	print(resp)
