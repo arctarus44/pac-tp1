@@ -1,5 +1,6 @@
 import client as c
 import os
+import random
 
 name = "dewarumez"
 pkey_srv_f = 'srv_public.key'
@@ -29,6 +30,7 @@ if __name__ == '__main__':
 	print("*** Section 1 ***")
 	resp = c.server_query(c.BASE_URL + get_pk)
 
+	print(resp);
 	pkey_srv = open(pkey_srv_f, 'w')
 	pkey_srv.write(resp)
 	pkey_srv.close()
@@ -82,6 +84,8 @@ if __name__ == '__main__':
 	# Section 3 #
 	#############
 	print("*** Section 3 ***")
+
+	# envoie de la clé publique
 	file = open(my_pkey_f, 'r')
 	param = {'public-key' : file.read()}
 	file.close()
@@ -102,27 +106,34 @@ if __name__ == '__main__':
 	file.close()
 
 	decrypt_msg = c.enc(cipher_64, passphrase=passwd, base64=True, decrypt=True)
+	print("message déchiffré " + decrypt_msg)
 
 	#############################
 	# Préparation de la réponse #
 	#############################
+	del(param)
 	msg = decrypt_msg[30:93]
 	url = decrypt_msg[106:130]
 
-	#chiffremet du message à envoyer avec une clé secrete
-	msg_to_send = c.enc(msg, passphrase=new_pass)
+	# chiffremet du message à envoyer avec une clé secrete
+	nw_session_key = "0x92d239d867dce0c61d30111fceeb0eec" # générer avec "tr -dc a-f0-9 < /dev/urandom | head -c 32"
+	msg_to_send = c.enc(msg, passphrase=nw_session_key)
 
-	#écriture de la clé secrete dans un fichier
-	file = open(sessionKey_f, 'w')
-	file.write(new_pass)
+	# chiffrement du message
+	file = open("nw_session.key", 'w')
+	file.write(nw_session_key)
 	file.close()
+	print("echo "+ nw_session_key + " | openssl pkeyutl -encrypt -pubin -inkey srv_public.key -out nw_msg.bin")
+	os.system("echo "+ nw_session_key + " | openssl pkeyutl -encrypt -pubin -inkey srv_public.key -out nw_msg.bin")
+	print("base64 nw_msg.bin > nw_msg.64")
+	os.system("base64 nw_msg.bin > nw_msg.64")
 
-	# chiffrement
-	os.system("openssl rsautl -encrypt -pubin -inkey " + pkey_srv_f  + " -in " + sessionKey_f + " -out " + tmp)
-	os.system("base64 " + tmp + " > " + out)
-	file = open(out, 'r')
-	param = {'session-key' : file.read() , 'ciphertext' : msg_to_send[:-1]}
-	file.close()
+	file = open("nw_msg.64", 'r')
+
+	param = {"session-key" : file.read(), 'ciphertext' : msg_to_send}
+
+	print("session = " +param['session-key'])
+	print("ciphertex = " +param['ciphertext'])
 
 	resp = c.server_query(c.BASE_URL + pk_validate, param)
 	print(resp)
