@@ -5,8 +5,8 @@ public_key = 'public-key'
 
 name = "owczarek"
 name_me = "dewarumez"
-other_key = "other_key.pem"
-other_sign_key = "other_sign_key.pem"
+other_key = name + "_pkey.pem"
+other_sign_key = name + "pkey.sign"
 my_sign_key = "my_sign.key"
 wot = "/web-of-trust/"
 sign = wot + "sign/" + name_me
@@ -33,13 +33,13 @@ if __name__ == "__main__":
 
 	# Signature de la clé de other
 	os.system(sig_key.format(secret_key, other_key, other_sign_key))
-	os.system("base64 " + my_sign_key + " > " + name + ".sign")
+	os.system("base64 " + other_sign_key + " > " + name + ".sign")
 
-	# Signature de la signature de ma clé
+	Signature de la signature de ma clé
 	os.system(sig_key.format(secret_key, my_sign_key, "tmp2.bin"))
 	os.system("base64 tmp2.bin > tmp2.64")
 
-	# La signature de ma clé en base64
+	La signature de ma clé en base64
 	os.system("base64 " + my_sign_key +" > " + my_sign_key + ".64")
 
 	file1 = open(my_sign_key+".64", 'r')
